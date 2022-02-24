@@ -9,3 +9,66 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+### 把clean data 导入分成三个table t1,t2,t3
+### 把三个table 融合成一个table t0
+```{r}
+
+```
+
+### federater learning
+先算各自outcome的均值y1 y2 y3 汇总得到ybar
+算 predictor的均值x1，x2,x3  算得xbar
+n1,n2,n3 reprsent the number of observaion
+```{r}
+n1 = length(t1)
+n2 = length(t2)
+n3 = length(t3)
+n = n1+n2+n3
+x_bar = (sum(t1$x) +sum(t2$x) +sum(t3$x))/n
+y_bar = (sum(t1$y) +sum(t2$y) +sumt3$y))/n
+
+```
+返回均值 用于算ssx ssy ssxy
+
+```{r}
+ssx1 = sum((t1$x - x_bar)^2)
+ssx2 = sum((t2$x - x_bar)^2)
+ssx3 = sum((t3$x - x_bar)^2)
+
+ssx = ssx1+ssx2+ssx3
+
+ssy1 = sum((t1$y - y_bar)^2)
+ssy2 = sum((t2$y - y_bar)^2)
+ssy3 = sum((t3$y - y_bar)^2)
+ssy = ssy1+ssy2+ssy3
+
+ssxy1 = sum((t1$x - x_bar)*(t1$y - y_bar))
+ssxy2 = sum((t2$x - x_bar)*(t1$y - y_bar))
+ssxy3 = sum((t3$x - x_bar)*(t1$y - y_bar))
+
+ssxy = ssxy1 +ssxy2+ ssxy3
+  
+beta1_hat = ssxy/ssx
+beta0_hat = y_bar- beta1_hat*x_bar
+```
+
+把返回的beta1 beta0 用于算各自的fitted value 的MSE
+和总体的mse
+
+```{r}
+MSE1 = (t1$y - t1$x1 * beta1_hat-beta0_hat)^2
+MSE2 = (t2$y - t2$x1 * beta1_hat-beta0_hat)^2
+MSE3 = (t3$y - t3$x1 * beta1_hat-beta0_hat)^2
+
+MSE_total = MSE1+MSE2+MSE3
+```
+
+将返回的mse_total用于计算var
+
+```{r}
+var_beta1_hat = MSE_total/ssx
+```
+
+
+
