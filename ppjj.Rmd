@@ -9,12 +9,67 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(readr)
+library(readxl)
+library(lubridate)
+```
 
 ### 把clean data 导入分成三个table t1,t2,t3
 ### 把三个table 融合成一个table t0
 ```{r}
+t1 = read_excel(path = './rawdata/t1.xlsx',
+                col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
+# t2 = read_excel(path = './rawdata/t2.xlsx',
+#                  col_types = c("date","text","numeric","text","numeric","numeric","date"))
+
+
+
+
+t3 = read_excel(path = './rawdata/t3.xlsx',
+                col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
+for (i in 1:length(t3$date)) {
+  t3$pickups_1st[i] = ymd_hms(paste(as.character(t3$date[i]), strsplit(as.character(t3$pickups_1st[i]),split = " ")[[1]][2]))
+}
+
+
+t = list(t1,t3)
+```
+
+
+
+```{r}
+new_t= list()
+hm_to_min = function(hm){
+  splt = strsplit(hm,'h')[[1]]
+  hr = as.numeric(splt[1])
+  mn = as.numeric(strsplit(splt[2],'m'))
+  return(hr*60 + mn)
+}
+
+for (j in 1:length(t)) {
+  st = t[[j]]
+  for (i in 1:length(st$Date)) {
+  st$Pickup.1st[i] = ymd_hms(paste(as.character(st$Date[i]), strsplit(as.character(st$pickups_1st[i]),split = " ")[[1]][2]))
+}
+  st$Total.ST.true =unlist(lapply(st$Total.ST,hm_to_min))
+  st$Social.ST.true = unlist(lapply(st$Social.ST, hm_to_min))
+  st = st%>%mutate(Total.ST.match =Total.ST.true == Total.ST.min,
+                 Social.ST.match = Social.ST.true == Social.ST.min) %>% relocate(
+                   Date, Total.ST, Total.ST.min, Total.ST.match, Social.ST, Social.ST.min, Social.ST.match
+                 )
+  st$weekday = weekdays(st$Date,abbreviate = T)
+  st = st%>%mutate(if_weekend = weekday %in% c('Sun','Sat'))
+  new_t[[j]] = st
+}
 
 ```
+
+
+
 
 ### federater learning
 先算各自outcome的均值y1 y2 y3 汇总得到ybar
