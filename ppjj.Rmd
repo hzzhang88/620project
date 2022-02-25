@@ -23,48 +23,51 @@ library(lubridate)
 ```{r}
 t1 = read_excel(path = './rawdata/t1.xlsx',
                 col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
-# t2 = read_excel(path = './rawdata/t2.xlsx',
-#                  col_types = c("date","text","numeric","text","numeric","numeric","date"))
-
-
-
-
+t2 = read_excel(path = './rawdata/t2.xlsx',
+                  col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
 t3 = read_excel(path = './rawdata/t3.xlsx',
                 col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
 for (i in 1:length(t3$date)) {
   t3$pickups_1st[i] = ymd_hms(paste(as.character(t3$date[i]), strsplit(as.character(t3$pickups_1st[i]),split = " ")[[1]][2]))
 }
 
+colnames(t2) = c('date',"total_st","social_st","pickups","pickups_1st","weekday","if_weekend")
+for (i in 1:length(t2$date)) {
+  t2$pickups_1st[i] = ymd_hms(paste(as.character(t2$date[i]), strsplit(as.character(t2$pickups_1st[i]),split = " ")[[1]][2]))
+}
 
-t = list(t1,t3)
+t1 = cbind(t1,id = 1)
+t2 = cbind(t2,id = 2)
+t3 = cbind(t3,id = 3)
+tt = rbind(t1,t2,t3)
 ```
 
 
 
 ```{r}
-new_t= list()
-hm_to_min = function(hm){
-  splt = strsplit(hm,'h')[[1]]
-  hr = as.numeric(splt[1])
-  mn = as.numeric(strsplit(splt[2],'m'))
-  return(hr*60 + mn)
-}
-
-for (j in 1:length(t)) {
-  st = t[[j]]
-  for (i in 1:length(st$Date)) {
-  st$Pickup.1st[i] = ymd_hms(paste(as.character(st$Date[i]), strsplit(as.character(st$pickups_1st[i]),split = " ")[[1]][2]))
-}
-  st$Total.ST.true =unlist(lapply(st$Total.ST,hm_to_min))
-  st$Social.ST.true = unlist(lapply(st$Social.ST, hm_to_min))
-  st = st%>%mutate(Total.ST.match =Total.ST.true == Total.ST.min,
-                 Social.ST.match = Social.ST.true == Social.ST.min) %>% relocate(
-                   Date, Total.ST, Total.ST.min, Total.ST.match, Social.ST, Social.ST.min, Social.ST.match
-                 )
-  st$weekday = weekdays(st$Date,abbreviate = T)
-  st = st%>%mutate(if_weekend = weekday %in% c('Sun','Sat'))
-  new_t[[j]] = st
-}
+# new_t= list()
+# hm_to_min = function(hm){
+#   splt = strsplit(hm,'h')[[1]]
+#   hr = as.numeric(splt[1])
+#   mn = as.numeric(strsplit(splt[2],'m'))
+#   return(hr*60 + mn)
+# }
+# 
+# for (j in 1:length(t)) {
+#   st = t[[j]]
+#   for (i in 1:length(st$Date)) {
+#   st$Pickup.1st[i] = ymd_hms(paste(as.character(st$Date[i]), strsplit(as.character(st$pickups_1st[i]),split = " ")[[1]][2]))
+# }
+#   st$Total.ST.true =unlist(lapply(st$Total.ST,hm_to_min))
+#   st$Social.ST.true = unlist(lapply(st$Social.ST, hm_to_min))
+#   st = st%>%mutate(Total.ST.match =Total.ST.true == Total.ST.min,
+#                  Social.ST.match = Social.ST.true == Social.ST.min) %>% relocate(
+#                    Date, Total.ST, Total.ST.min, Total.ST.match, Social.ST, Social.ST.min, Social.ST.match
+#                  )
+#   st$weekday = weekdays(st$Date,abbreviate = T)
+#   st = st%>%mutate(if_weekend = weekday %in% c('Sun','Sat'))
+#   new_t[[j]] = st
+# }
 
 ```
 
