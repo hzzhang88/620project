@@ -43,69 +43,37 @@ tt = rbind(t1,t2,t3)
 ```
 
 
-
-```{r}
-# new_t= list()
-# hm_to_min = function(hm){
-#   splt = strsplit(hm,'h')[[1]]
-#   hr = as.numeric(splt[1])
-#   mn = as.numeric(strsplit(splt[2],'m'))
-#   return(hr*60 + mn)
-# }
-# 
-# for (j in 1:length(t)) {
-#   st = t[[j]]
-#   for (i in 1:length(st$Date)) {
-#   st$Pickup.1st[i] = ymd_hms(paste(as.character(st$Date[i]), strsplit(as.character(st$pickups_1st[i]),split = " ")[[1]][2]))
-# }
-#   st$Total.ST.true =unlist(lapply(st$Total.ST,hm_to_min))
-#   st$Social.ST.true = unlist(lapply(st$Social.ST, hm_to_min))
-#   st = st%>%mutate(Total.ST.match =Total.ST.true == Total.ST.min,
-#                  Social.ST.match = Social.ST.true == Social.ST.min) %>% relocate(
-#                    Date, Total.ST, Total.ST.min, Total.ST.match, Social.ST, Social.ST.min, Social.ST.match
-#                  )
-#   st$weekday = weekdays(st$Date,abbreviate = T)
-#   st = st%>%mutate(if_weekend = weekday %in% c('Sun','Sat'))
-#   new_t[[j]] = st
-# }
-
-```
-
-
-
-
-### federater learning
+### federated learning
 先算各自outcome的均值y1 y2 y3 汇总得到ybar
 算 predictor的均值x1，x2,x3  算得xbar
 n1,n2,n3 reprsent the number of observaion
 ```{r}
-n1 = length(t1)
-n2 = length(t2)
-n3 = length(t3)
+n1 = nrow(t1)
+n2 = nrow(t2)
+n3 = nrow(t3)
 n = n1+n2+n3
 x = 'pickups'
-
-x_bar = (sum(t1$x) +sum(t2$x) +sum(t3$x))/n
-y_bar = (sum(t1$y) +sum(t2$y) +sumt3$y))/n
+y = 'social_st'
+x_bar = (sum(t1[[x]]) +sum(t2[[x]]) +sum(t3[[x]]))/n
+y_bar = (sum(t1[[y]])+sum(t2[[y]]) +sum(t3[[y]]))/n
 
 ```
 返回均值 用于算ssx ssy ssxy
-
 ```{r}
-ssx1 = sum((t1$x - x_bar)^2)
-ssx2 = sum((t2$x - x_bar)^2)
-ssx3 = sum((t3$x - x_bar)^2)
+ssx1 = sum((t1[[x]] - x_bar)^2)
+ssx2 = sum((t2[[x]] - x_bar)^2)
+ssx3 = sum((t3[[x]] - x_bar)^2)
 
 ssx = ssx1+ssx2+ssx3
 
-ssy1 = sum((t1$y - y_bar)^2)
-ssy2 = sum((t2$y - y_bar)^2)
-ssy3 = sum((t3$y - y_bar)^2)
+ssy1 = sum((t1[[y]] - y_bar)^2)
+ssy2 = sum((t2[[y]] - y_bar)^2)
+ssy3 = sum((t3[[y]] - y_bar)^2)
 ssy = ssy1+ssy2+ssy3
 
-ssxy1 = sum((t1$x - x_bar)*(t1$y - y_bar))
-ssxy2 = sum((t2$x - x_bar)*(t1$y - y_bar))
-ssxy3 = sum((t3$x - x_bar)*(t1$y - y_bar))
+ssxy1 = sum((t1[[x]] - x_bar)*(t1[[y]] - y_bar))
+ssxy2 = sum((t2[[x]] - x_bar)*(t2[[y]] - y_bar))
+ssxy3 = sum((t3[[x]] - x_bar)*(t3[[y]] - y_bar))
 
 ssxy = ssxy1 +ssxy2+ ssxy3
   
@@ -117,18 +85,39 @@ beta0_hat = y_bar- beta1_hat*x_bar
 和总体的mse
 
 ```{r}
-MSE1 = (t1$y - t1$x1 * beta1_hat-beta0_hat)^2
-MSE2 = (t2$y - t2$x1 * beta1_hat-beta0_hat)^2
-MSE3 = (t3$y - t3$x1 * beta1_hat-beta0_hat)^2
-
-MSE_total = MSE1+MSE2+MSE3
+MSE1 = sum((t1[[y]] - t1[[x]] * beta1_hat-beta0_hat)^2)
+MSE2 = sum((t2[[y]] - t2[[x]] * beta1_hat-beta0_hat)^2)
+MSE3 = sum((t3[[y]] - t3[[x]] * beta1_hat-beta0_hat)^2)
+MSE_total = (MSE1+MSE2+MSE3)/(n-2)
 ```
 
 将返回的mse_total用于计算var
 
 ```{r}
 var_beta1_hat = MSE_total/ssx
+st_beta1_hat = sqrt(var_beta1_hat)
+cat('Beta1:',beta1_hat,'\n')
+cat('st error',st_beta1_hat)
+
 ```
 
+```{r}
+comfirm = lm(as.formula(paste(y,'~', x)),data=tt)
+summary(comfirm)
+```
 
+### federated learning -- 'blue' version 
+beta1 = ssxy/ssx = (beta1.1*ssx.1 +beta1.2*ssx.2+ beta1.2*ssx.3 )
+```{r}
+i_ssx1 = sum((t1[[x]] - mean(t1[[x]]))^2)
+i_ssxy1 = sum((t1[[x]] - mean(t1[[x]]))*(t1[[y]] - mean(t1[[y]])))
+i_ssx2 = sum((t2[[x]] - mean(t2[[x]]))^2)
+i_ssxy2 = sum((t2[[x]] - mean(t2[[x]]))*(t2[[y]] - mean(t2[[y]])))
+i_ssx3 = sum((t3[[x]] - mean(t3[[x]]))^2)
+i_ssxy3 = sum((t3[[x]] - mean(t3[[x]]))*(t3[[y]] - mean(t3[[y]])))
+beta1_meta = (i_ssxy1+i_ssxy2+i_ssxy3)/(i_ssx1+i_ssx2+i_ssx3)
+
+
+
+```
 
