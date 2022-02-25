@@ -83,6 +83,8 @@ n1 = length(t1)
 n2 = length(t2)
 n3 = length(t3)
 n = n1+n2+n3
+x = 'pickups'
+
 x_bar = (sum(t1$x) +sum(t2$x) +sum(t3$x))/n
 y_bar = (sum(t1$y) +sum(t2$y) +sumt3$y))/n
 
