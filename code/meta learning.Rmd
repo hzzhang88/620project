@@ -1,0 +1,70 @@
+---
+title: "620project"
+author: "Xin Luo"
+date: "2022/2/26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Meta learning
+
+```{r cars}
+library(readxl)
+t1 <- read_excel('t1.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric'
+                                        ,'date', 'text', 'logical'))
+t2 <- read_excel('t2.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric'
+                                        ,'date', 'text', 'logical'))
+t3 <- read_excel('t3.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric'
+                                        ,'date', 'text', 'logical'))
+```
+
+
+## Separated linear regression
+```{r pressure, echo=FALSE}
+lm1 = lm(t1$social_st ~ t1$pickups)
+s1 = summary(lm1)
+lm2 = lm(t2$social_st ~ t2$pickups)
+s2 = summary(lm2)
+lm3 = lm(t3$social_st ~ t3$pickups)
+s3 = summary(lm3)
+```
+```{r}
+beta0_1 = s1$coefficients[1, 1]
+beta0_2 = s2$coefficients[1, 1]
+beta0_3 = s3$coefficients[1, 1]
+varbeta0_1 = s1$coefficients[1, 2]^2
+varbeta0_2 = s2$coefficients[1, 2]^2
+varbeta0_3 = s3$coefficients[1, 2]^2
+beta1_1 = s1$coefficients[2, 1]
+beta1_2 = s2$coefficients[2, 1]
+beta1_3 = s3$coefficients[2, 1]
+varbeta1_1 = s1$coefficients[2, 2]^2
+varbeta1_2 = s2$coefficients[2, 2]^2
+varbeta1_3 = s3$coefficients[2, 2]^2
+
+c01 = (1 / varbeta0_1) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
+c02 = (1 / varbeta0_2) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
+c03 = (1 / varbeta0_3) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
+beta0_m = c01 * beta0_1 + c02 * beta0_2 + c03 * beta0_3
+
+c11 = (1 / varbeta1_1) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
+c12 = (1 / varbeta1_2) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
+c13 = (1 / varbeta1_3) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
+beta1_m = c11 * beta1_1 + c12 * beta1_2 + c13 * beta1_3
+
+paste('meta beta0:', beta0_m)
+paste('meta beta1:', beta1_m)
+```
+
+## combined linear regression
+```{r}
+colnames(t1) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
+colnames(t2) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
+colnames(t3) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
+ad = rbind(t1, t2, t3)
+alm = lm(ad$social_st ~ ad$pickups)
+summary(alm)
+```
