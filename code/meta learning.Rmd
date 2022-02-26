@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r cars}
 library(readxl)
+library(lubridate)
 t1 <- read_excel('t1.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric'
                                         ,'date', 'text', 'logical'))
 t2 <- read_excel('t2.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric'
@@ -21,50 +22,59 @@ t3 <- read_excel('t3.xlsx', col_types = c('date', 'numeric', 'numeric', 'numeric
                                         ,'date', 'text', 'logical'))
 ```
 
+```{r}
+for (i in 1:length(t3$date)) {
+  t3$pickups_1st[i] = ymd_hms(paste(as.character(t3$date[i]), strsplit(as.character(t3$pickups_1st[i]),split = " ")[[1]][2]))
+}
+colnames(t2) = c('date',"total_st","social_st","pickups","pickups_1st","weekday","if_weekend")
+for (i in 1:length(t2$date)) {
+  t2$pickups_1st[i] = ymd_hms(paste(as.character(t2$date[i]), strsplit(as.character(t2$pickups_1st[i]),split = " ")[[1]][2]))
+}
+t1[['first_pick_time']] = hour(t1$pickups_1st) + minute(t1$pickups_1st)/60
+t2[['first_pick_time']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
+t3[['first_pick_time']] = hour(t3$pickups_1st) + minute(t3$pickups_1st)/60
+
+t1['if_weekend'] = 1 * t1$if_weekend
+t2['if_weekend'] = 1 * t2$if_weekend
+t3['if_weekend'] = 1 * t3$if_weekend
+```
 
 ## Separated linear regression
 ```{r pressure, echo=FALSE}
-lm1 = lm(t1$social_st ~ t1$pickups)
+lm1 = lm(t1$social_st ~ t1$pickups + t1$first_pick_time + t1$if_weekend)
 s1 = summary(lm1)
-lm2 = lm(t2$social_st ~ t2$pickups)
+lm2 = lm(t2$social_st ~ t2$pickups + t2$first_pick_time + t2$if_weekend)
 s2 = summary(lm2)
-lm3 = lm(t3$social_st ~ t3$pickups)
+lm3 = lm(t3$social_st ~ t3$pickups + t3$first_pick_time + t3$if_weekend)
 s3 = summary(lm3)
 ```
+
+## meta learning
 ```{r}
-beta0_1 = s1$coefficients[1, 1]
-beta0_2 = s2$coefficients[1, 1]
-beta0_3 = s3$coefficients[1, 1]
-varbeta0_1 = s1$coefficients[1, 2]^2
-varbeta0_2 = s2$coefficients[1, 2]^2
-varbeta0_3 = s3$coefficients[1, 2]^2
-beta1_1 = s1$coefficients[2, 1]
-beta1_2 = s2$coefficients[2, 1]
-beta1_3 = s3$coefficients[2, 1]
-varbeta1_1 = s1$coefficients[2, 2]^2
-varbeta1_2 = s2$coefficients[2, 2]^2
-varbeta1_3 = s3$coefficients[2, 2]^2
-
-c01 = (1 / varbeta0_1) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
-c02 = (1 / varbeta0_2) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
-c03 = (1 / varbeta0_3) / (1 / varbeta0_1 + 1 / varbeta0_2 + 1 / varbeta0_3)
-beta0_m = c01 * beta0_1 + c02 * beta0_2 + c03 * beta0_3
-
-c11 = (1 / varbeta1_1) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
-c12 = (1 / varbeta1_2) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
-c13 = (1 / varbeta1_3) / (1 / varbeta1_1 + 1 / varbeta1_2 + 1 / varbeta1_3)
-beta1_m = c11 * beta1_1 + c12 * beta1_2 + c13 * beta1_3
-
-paste('meta beta0:', beta0_m)
-paste('meta beta1:', beta1_m)
+p = 3
+for(i in c(1 : p)){  
+  beta1 = s1$coefficients[i, 1]
+  beta2 = s2$coefficients[i, 1]
+  beta3 = s3$coefficients[i, 1]
+  varbeta1 = s1$coefficients[i, 2]^2
+  varbeta2 = s2$coefficients[i, 2]^2
+  varbeta3 = s3$coefficients[i, 2]^2
+  
+  c1 = (1 / varbeta1) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  c2 = (1 / varbeta2) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  c3 = (1 / varbeta3) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  beta_m = c1 * beta1 + c2 * beta2 + c3 * beta3
+  
+  print(paste('Meta beta', i - 1, ':', round(beta_m, 4)))
+}
 ```
 
 ## combined linear regression
 ```{r}
-colnames(t1) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
-colnames(t2) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
-colnames(t3) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend")
+colnames(t1) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend", "first_pick_time")
+colnames(t2) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend","first_pick_time")
+colnames(t3) <- c("date", "total_st", "social_st", "pickups", "pickup_1st", "weekday", "if_weekend","first_pick_time")
 ad = rbind(t1, t2, t3)
-alm = lm(ad$social_st ~ ad$pickups)
+alm = lm(ad$social_st ~ ad$pickups + ad$first_pick_time + ad$if_weekend)
 summary(alm)
 ```
