@@ -109,11 +109,54 @@ cat('st error',st_beta1_hat)
 ```
 
 ```{r}
+library(knitr)
+library(kableExtra)
+idn = c(1,2,3)
+obs = c(n1,n2,n3)
+x_bar_indi = c(mean(t1$pickups),mean(t2$pickups),mean(t3$pickups))
+y_bar_indi = c(mean(t1$social_st),mean(t2$social_st),mean(t3$social_st))
+table1 = cbind(idn,obs,round(x_bar_indi,2),round(y_bar_indi,2))
+knitr::kable(table1,col.names= c('ID','Observations\n Number','Average of\n Pickup Times (X)','Average of\n Social Screen Time (Y)'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F,position = "left") %>% save_kable('table1.pdf')
+
+```
+
+```{r}
+sumofsquarex = round(c(ssx1,ssx2,ssx3),2)
+sumofsquarexy = round(c(ssxy1,ssxy2,ssxy3),2)
+table2 = cbind(idn,sumofsquarex,sumofsquarexy)
+knitr::kable(table2,col.names= c('ID','SSX','SSXY'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F,position = "left") %>% save_kable('table2.pdf')
+```
+```{r}
+sse = round(c(MSE1,MSE2,MSE3),2)
+table3 = cbind(idn,sse)
+knitr::kable(table3,format ='html' ,col.names= c('ID','SSE'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F,position = "left") %>% save_kable('table3.pdf')
+```
+
+
+```{r}
 comfirm = lm(as.formula(paste(y,'~', x)),data=tt)
 summary(comfirm)
 ```
+### meta learning
+
+
+$n = n_1 +n_2+n_3$  $\bar{x} = \frac{\sum_{i=1}^{3}\bar{x}_i \times n_i}{n_1 +n_2+n_3}$
+$\bar{y} = \frac{\sum_{i=1}^{3}\bar{y}_i \times n_i}{n_1 +n_2+n_3}$
+
+$ssx_k = \sum_{i=1}^{n_k}(x_{ki} -\bar{x})^2$
+$ssxy_k = \sum_{i=1}^{n_k}[(x_{ki} -\bar{x})\times (y_{ki} -\bar{y})]$
+
+$\beta_1 = \frac{\sum_{k=1}^3 ssxy_k}{\sum_{k=1}^{3} ssx_k}$
+$\beta_0 = \bar{y} - \bar{x}\times\beta_1 $
+
+$SSE_k = \sum_{i=1}^{n_k} (y_{ki} - \beta_0 -\bar{x}_{ki}\times\beta_1 )^2$
+$MSE = \frac{\sum_{k=1}^{3}SSE_k}{n-2}$
+
+$Var(\beta_1) = \frac{MSE}{SSX}$
+$Var(\beta_0)= MSE \times (\frac{1}{n} + \frac{\bar{x}^2}{SSX})$
+
 ### beta 
 ```{r}
-mul_fit  = lm(social_st ~ pickups+if_weekend+first_pick,data = tt)
+# mul_fit  = lm(social_st ~ pickups+if_weekend+first_pick,data = tt)
 ```
 
