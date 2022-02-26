@@ -19,7 +19,7 @@ library(lubridate)
 ```
 
 ### 把clean data 导入分成三个table t1,t2,t3
-### 把三个table 融合成一个table t0
+### 把三个table 融合成一个table tt
 ```{r}
 t1 = read_excel(path = './rawdata/t1.xlsx',
                 col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
@@ -39,6 +39,10 @@ for (i in 1:length(t2$date)) {
 t1 = cbind(t1,id = 1)
 t2 = cbind(t2,id = 2)
 t3 = cbind(t3,id = 3)
+# calculate the screen time except for the social purpose 
+t1[['other_st']] = t1[['total_st']] - t1[['social_st']]
+t2[['other_st']] = t2[['total_st']] - t2[['social_st']]
+t3[['other_st']] = t3[['total_st']] - t3[['social_st']]
 tt = rbind(t1,t2,t3)
 ```
 
@@ -104,20 +108,5 @@ cat('st error',st_beta1_hat)
 ```{r}
 comfirm = lm(as.formula(paste(y,'~', x)),data=tt)
 summary(comfirm)
-```
-
-### federated learning -- 'blue' version 
-beta1 = ssxy/ssx = (beta1.1*ssx.1 +beta1.2*ssx.2+ beta1.2*ssx.3 )
-```{r}
-i_ssx1 = sum((t1[[x]] - mean(t1[[x]]))^2)
-i_ssxy1 = sum((t1[[x]] - mean(t1[[x]]))*(t1[[y]] - mean(t1[[y]])))
-i_ssx2 = sum((t2[[x]] - mean(t2[[x]]))^2)
-i_ssxy2 = sum((t2[[x]] - mean(t2[[x]]))*(t2[[y]] - mean(t2[[y]])))
-i_ssx3 = sum((t3[[x]] - mean(t3[[x]]))^2)
-i_ssxy3 = sum((t3[[x]] - mean(t3[[x]]))*(t3[[y]] - mean(t3[[y]])))
-beta1_meta = (i_ssxy1+i_ssxy2+i_ssxy3)/(i_ssx1+i_ssx2+i_ssx3)
-
-
-
 ```
 
