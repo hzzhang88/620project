@@ -36,9 +36,9 @@ for (i in 1:length(t2$date)) {
   t2$pickups_1st[i] = ymd_hms(paste(as.character(t2$date[i]), strsplit(as.character(t2$pickups_1st[i]),split = " ")[[1]][2]))
 }
 
-t1[['first_pick']] = hour(t1$pickups_1st) + minute(t1$pickups_1st)/60
-t2[['first_pick']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
-t3[['first_pick']] = hour(t3$pickups_1st) + minute(t3$pickups_1st)/60
+t1[['first_pick_time']] = hour(t1$pickups_1st) + minute(t1$pickups_1st)/60
+t2[['first_pick_time']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
+t3[['first_pick_time']] = hour(t3$pickups_1st) + minute(t3$pickups_1st)/60
 t1 = cbind(t1,id = 1)
 t2 = cbind(t2,id = 2)
 t3 = cbind(t3,id = 3)
