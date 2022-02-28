@@ -1,0 +1,33 @@
+library(tidyverse)
+library(tidyr)
+library(readr)
+library(readxl)
+library(lubridate)
+t2 = read_excel(path = './rawdata/t2.xlsx',
+                col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
+colnames(t2) = c('date',"total_st","social_st","pickups","pickups_1st","weekday","if_weekend")
+for (i in 1:length(t2$date)) {
+  t2$pickups_1st[i] = ymd_hms(paste(as.character(t2$date[i]), strsplit(as.character(t2$pickups_1st[i]),split = " ")[[1]][2]))
+}
+t2[['first_pick_time']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
+t2 = cbind(t2,id = 2)
+
+## Federated learning
+n2 = nrow(t2)
+x_bar_2 = mean(t2[[x]])
+y_bar_2 = mean(t2[[y]])
+
+## according to the returned population mean to calculate SS
+ssx2 = sum((t2[[x]] - x_bar)^2)
+ssxy2 = sum((t2[[x]] - x_bar)*(t2[[y]] - y_bar))
+
+## according to the returned slope and intercept to calculate sse
+SSE2 = sum((t2[[y]] - t2[[x]] * beta2_hat-beta0_hat)^2)
+
+## Meta Learning
+fit2  = lm(social_st ~ pickups+first_pick_time + if_weekend,data = t2)
+betas = coefficients(fit2)
+vars = summary(mul_fit)$coefficient[,'Std. Error']
+
+## send the summary statistics to central server
+
