@@ -93,10 +93,10 @@ beta0_hat = y_bar- beta1_hat*x_bar
 和总体的mse
 
 ```{r}
-MSE1 = sum((t1[[y]] - t1[[x]] * beta1_hat-beta0_hat)^2)
-MSE2 = sum((t2[[y]] - t2[[x]] * beta1_hat-beta0_hat)^2)
-MSE3 = sum((t3[[y]] - t3[[x]] * beta1_hat-beta0_hat)^2)
-MSE_total = (MSE1+MSE2+MSE3)/(n-2)
+SSE1 = sum((t1[[y]] - t1[[x]] * beta1_hat-beta0_hat)^2)
+SSE2 = sum((t2[[y]] - t2[[x]] * beta1_hat-beta0_hat)^2)
+SSE3 = sum((t3[[y]] - t3[[x]] * beta1_hat-beta0_hat)^2)
+MSE_total = (SSE1+SSE2+SSE3)/(n-2)
 ```
 
 将返回的mse_total用于计算var
