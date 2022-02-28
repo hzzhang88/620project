@@ -39,12 +39,14 @@ tt = rbind(t1,t2,t3)
 ```
 
 #federated learning
+use the received n1,n2,n3
 ```{r}
 n = n1+n2+n3
 x_bar = (n1*x_bar_1 + n2*x_bar_2+n3*x_bar_3)/n
 x_bar = (n1*y_bar_1 + n2*y_bar_2+n3*y_bar_3)/n
 ```
-
+use the received ssx1,ssx2,ssx3
+use the SSXY1-3
 ```{r}
 ssx = ssx1+ssx2+ssx3
 ssxy = ssxy1 +ssxy2+ ssxy3
@@ -52,7 +54,7 @@ ssxy = ssxy1 +ssxy2+ ssxy3
 beta1_hat = ssxy/ssx
 beta0_hat = y_bar- beta1_hat*x_bar
 ```
-
+use the received SSE1-3
 ```{r}
 MSE_total = (SSE1+SSE2+SSE3)/(n-2)
 var_beta1_hat = MSE_total/ssx
@@ -64,7 +66,20 @@ p_value_beta0 = pt(beta0_hat/st_beta0_hat,n-2,lower.tail = F)*2
 ```
 
 #meta learning 
+receive the coefficients and variance
 ```{r}
 
+```
+
+# comfirmation analysis
+
+```{r}
+comfirm1 = lm(as.formula(paste(y,'~', x)),data=tt)
+summary(comfirm1)
+```
+
+```{r}
+mul_fit= lm(social_st ~ pickups+if_weekend+first_pick_time,data = t3)
+summary(mul_fit)
 ```
 
