@@ -1,0 +1,279 @@
+---
+title: "620project1"
+author: "Ruiqi Ren"
+date: "2022/2/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r description}
+library (readxl)
+library (lubridate)
+library (dplyr)
+t3 = read_excel(path="C:\\t3.xlsx",
+col_types = c ( "date" , "numeric" , "numeric", "numeric" ,"date" ,"text","logical"))
+t2 = read_excel(path="C:\\t2.xlsx",
+col_types = c ( "date" , "numeric" , "numeric", "numeric" ,"date" ,"text","logical"))
+t1 = read_excel(path="C:\\t1.xlsx",
+col_types = c ( "date" , "numeric" , "numeric", "numeric" ,"date" ,"text","logical"))
+t1 = t1 %>%
+mutate (pickups_st = as.POSIXct ( paste ( as.character ( date ) , unlist (lapply ( pickups_1st , function(x) { strsplit ( as.character ( x ) ,split=" " ) [[1]] [2] } ) ) ) ) )
+t2 = t2 %>%
+mutate (pickups_st = as.POSIXct ( paste ( as.character ( date ) , unlist (lapply ( pickups_1st , function(x) { strsplit ( as.character ( x ) ,split=" " ) [[1]] [2] } ) ) ) ) )
+t3 = t3 %>%
+mutate (pickups_st = as.POSIXct ( paste ( as.character ( date ) , unlist (lapply ( pickups_1st , function(x) { strsplit ( as.character ( x ) ,split=" " ) [[1]] [2] } ) ) ) ) )
+t1=as.data.frame(t1)
+t2=as.data.frame(t2)
+t3=as.data.frame(t3)
+n1=nrow(t1)
+n2=nrow(t2)
+n3=nrow(t3)
+t1=cbind(t1,rep(1,nrow(t1)))
+t2=cbind(t2,rep(2,nrow(t2)))
+t3=cbind(t3,rep(3,nrow(t3)))
+colnames(t1)=c("date","total_st","social_st","pickups","pickups_1st","weekday","if_weekend","pickups_st","group")
+colnames(t2)=c("date","total_st","social_st","pickups","pickups_1st","weekday","if_weekend","pickups_st","group")
+colnames(t3)=c("date","total_st","social_st","pickups","pickups_1st","weekday","if_weekend","pickups_st","group")
+tt=rbind(t1,t2,t3)
+
+
+
+library ( ggplot2 )
+library ( dplyr )
+#total screen time
+plot(tt$date,tt$total_st,col=tt$if_weekend,ylim=c(10,1000),type='p',pch=16,cex=0.5,main="Total screen time(min)",xlab="Date",ylab="Time",xaxt="n")
+lines(t2$date,t2$total_st,col="#00b0eb")
+lines(t3$date,t3$total_st,col="#ffd401")
+lines(t1$date,t1$total_st,col="#e20612")
+legend("topleft", title="Member", pch=c(15, 15,15), c("1","2","3"),col=c("#e20612","#00b0eb","#ffd401" ),cex=0.6)
+
+#social screen time
+plot(tt$date,tt$social_st,col=tt$if_weekend,ylim=c(0,600),type='p',pch=16,cex=0.5,main="Social screen time(min)",xlab="Date",ylab="Time",xaxt="n")
+lines(t2$date,t2$social_st,col="#00b0eb")
+lines(t3$date,t3$social_st,col="#ffd401")
+lines(t1$date,t1$social_st,col="#e20612")
+legend("topleft", title="Member", pch=c(15, 15,15), c("1","2","3"),col=c("#e20612","#00b0eb","#ffd401" ),cex=0.6)
+
+#pickup times
+plot(tt$date,tt$pickups,col=tt$if_weekend,ylim=c(0,250),type='p',pch=16,cex=0.5,main="Pickups times",xlab="Date",ylab="Time",xaxt="n")
+lines(t2$date,t2$pickups,col="#00b0eb")
+lines(t3$date,t3$pickups,col="#ffd401")
+lines(t1$date,t1$pickups,col="#e20612")
+legend("topleft", title="Member", pch=c(15, 15,15), c("1","2","3"),col=c("#e20612","#00b0eb","#ffd401" ),cex=0.6)
+
+#pickups 1st
+#merging together
+library(circular)
+tt = tt %>%
+mutate ( pickups_1st.angular = (hour(pickups_1st)*60+minute(pickups_1st ) )/
+( 24*60 )*360 )
+
+first.pickup.cir=circular(tt$pickups_1st.angular, units="degrees",template = "clock24")
+#scatter plot
+plot(first.pickup.cir)
+#histogram plot
+plot(first.pickup.cir,stack=TRUE, bins=48, col=  "blue") 
+
+#ti
+t1=subset(tt,tt$group==1)
+t2=subset(tt,tt$group==2)
+t3=subset(tt,tt$group==3)
+first.pickup.cir1=circular(t1$pickups_1st.angular, units="degrees",template = "clock24")
+first.pickup.cir2=circular(t2$pickups_1st.angular, units="degrees",template = "clock24")
+first.pickup.cir3=circular(t3$pickups_1st.angular, units="degrees",template = "clock24")
+#scatter plot
+plot(first.pickup.cir1)
+plot(first.pickup.cir2)
+plot(first.pickup.cir3)
+#histogram plot
+split.screen(c(1,3))
+screen(1)
+plot(first.pickup.cir1,stack=TRUE, bins=48, col=  "blue") 
+screen(2)
+plot(first.pickup.cir2,stack=TRUE, bins=48, col=  "blue") 
+screen(3)
+plot(first.pickup.cir3,stack=TRUE, bins=48, col=  "blue") 
+
+
+
+total1 = ggplot( t1 , aes( x=date , y=total_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 1") +
+xlab ( "" ) + ylab ( "total screen time(min)"  )+
+ylim ( 50 , 900 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+
+total2 = ggplot( t2 , aes( x=date , y=total_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 2") +
+xlab ( "" ) + ylab ( "total screen time(min)"  )+
+ylim ( 50 , 900 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+total3 = ggplot( t3 , aes( x=date , y=total_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 3") +
+xlab ( "" ) + ylab ( "total screen time(min)"  )+
+ylim ( 50 , 900 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+total1
+total2
+total3
+
+#############social###############
+social1 = ggplot( t1 , aes( x=date , y=social_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 1") +
+xlab ( "" ) + ylab ( "social screen time(min)"  )+
+ylim ( 0 , 500 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+
+social2 = ggplot( t2 , aes( x=date , y=social_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 2") +
+xlab ( "" ) + ylab ( "social screen time(min)"  )+
+ylim ( 0 , 500 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+social3 = ggplot( t3 , aes( x=date , y=social_st, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 3") +
+xlab ( "" ) + ylab ( "social screen time(min)"  )+
+ylim ( 0 , 520 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+social1
+social2
+social3
+
+############pickups##########
+pickups1 = ggplot( t1 , aes( x=date , y=pickups, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 1") +
+xlab ( "" ) + ylab ( "pickups times"  )+
+ylim ( 0 , 250 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+
+pickups2 = ggplot( t2 , aes( x=date , y=pickups, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+ggtitle("Member 2") +
+xlab ( "" ) + ylab ( "pickups times"  )+
+ylim ( 0 , 250 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+
+pickups3 = ggplot( t3 , aes( x=date , y=pickups, col=if_weekend) )+
+geom_line ( color="steelblue" ) +
+geom_point( ) +
+  ggtitle("Member 3") +
+xlab ( "" ) + ylab ( "pickups times"  )+
+ylim ( 0 , 250 )+
+scale_color_manual ( labels = c( "weekdays",  "weekends" ) , values=c( "black"
+, "red" ) )+
+theme_minimal ()+
+theme(axis.text.x=element_text ( angle=60, hjust =1), legend.title=element_blank ( ) )
+pickups1
+pickups2
+pickups3
+
+
+#####confirmation analysis
+t1[['first_pick_time']] = hour(t1$pickups_1st) + minute(t1$pickups_1st)/60
+t2[['first_pick_time']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
+t3[['first_pick_time']] = hour(t3$pickups_1st) + minute(t3$pickups_1st)/60
+tt=rbind(t1,t2,t3)
+m1=lm(tt$social_st~tt$pickups)
+m2=lm(tt$social_st~tt$pickups+I(tt$if_weekend)+tt$first_pick_time)
+summary(m1)
+summary(m2)
+
+library ( GGally )
+ggpairs ( tt , columns=c ( "social_st",   "pickups","first_pick_time","if_weekend") ,
+columnLabels = c (  "social sreen time","total pickups" ,"first pickup time","weekend") ) + theme_bw ( )
+ggpairs ( t1 , columns=c ( "social_st",   "pickups","first_pick_time","if_weekend") ,
+columnLabels = c (  "social sreen time","total pickups" ,"first pickup time","weekend") ) + theme_bw ( )
+ggpairs ( t2 , columns=c ( "social_st",   "pickups","first_pick_time","if_weekend") ,
+columnLabels = c (  "social sreen time","total pickups" ,"first pickup time","weekend") ) + theme_bw ( )
+ggpairs ( t3 , columns=c ( "social_st",   "pickups","first_pick_time","if_weekend") ,
+columnLabels = c (  "social sreen time","total pickups" ,"first pickup time","weekend") ) + theme_bw ( )
+
+#test the multicollinearity
+m=lm(social_st~pickups+first_pick_time+factor(if_weekend),data=tt)
+m1=lm(social_st~pickups+first_pick_time+factor(if_weekend),data=t1)
+m2=lm(social_st~pickups+first_pick_time+factor(if_weekend),data=t2)
+m3=lm(social_st~pickups+first_pick_time+factor(if_weekend),data=t3)
+
+
+car::vif(m)
+car::vif(m1)
+car::vif(m2)
+car::vif(m3)
+
+#high leverage
+m.h=hatvalues(m)
+m.h[which(m.h>0.5)]
+m1.h=hatvalues(m1)
+m1.h[which(m1.h>0.5)]
+m2.h=hatvalues(m2)
+m2.h[which(m2.h>0.5)]
+m3.h=hatvalues(m3)
+m3.h[which(m3.h>0.5)]
+
+#high influence
+plot(m,which=4);abline(h=4/nrow(tt),lty=2)
+plot(m1,which=4);abline(h=4/nrow(t1),lty=2)
+plot(m2,which=4);abline(h=4/nrow(t2),lty=2)
+plot(m3,which=4);abline(h=4/nrow(t3),lty=2)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
