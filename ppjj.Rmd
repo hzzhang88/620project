@@ -118,7 +118,8 @@ beta0_row = c(round(c(beta0_hat,st_beta0_hat,beta0_hat/st_beta0_hat),4),format(p
 beta1_row = round(c(beta1_hat,st_beta1_hat,beta1_hat/st_beta1_hat,p_value_beta1),4)
 table2 = rbind(beta0_row,beta1_row)
 row.names(table2) =c('(Intercept)',"Pickups")
-knitr::kable(table2,caption = 'Table 2. The parameters of simple linear model', align ='cccc',col.names= c('Estimate','Std. Error','t value','P value'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F)%>% save_kable('table2.png',zoom=2)
+knitr::kable(table2,caption = 'Table 2. The parameters of simple linear model', align ='cccc',col.names= c('Estimate','Std. Error','t value','P value'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F)
+# %>% save_kable('table2.png',zoom=2)
 ```
 
 
@@ -133,7 +134,8 @@ sumofsquarex = round(c(ssx1,ssx2,ssx3),2)
 sumofsquarexy = round(c(ssxy1,ssxy2,ssxy3),2)
 sse = round(c(MSE1,MSE2,MSE3),2)
 table4 = cbind(idn,obs,x_bar_indi,y_bar_indi,sumofsquarex,sumofsquarexy,sse)
-knitr::kable(table4,caption = 'Table 1. The sample summary statistics',align ='ccccccc',col.names= c('ID','Observations Number (n)','Average of Pickup\n Times (X)','Average of Social Screen Time (Y)','SSX','SSXY','SSE'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F)%>% save_kable('table4.png',zoom=2)
+knitr::kable(table4,caption = 'Table 1. The sample summary statistics',align ='ccccccc',col.names= c('ID','Observations Number (n)','Average of Pickup\n Times (X)','Average of Social Screen Time (Y)','SSX','SSXY','SSE'))%>% kable_styling(bootstrap_options = c("striped"),full_width = F)
+# %>% save_kable('table4.png',zoom=2)
 ```
 
 
@@ -186,7 +188,7 @@ $$
 
 ### beta 
 ```{r}
-mul_fit  = lm(social_st ~ pickups+if_weekend+first_pick_time,data = tt)
+mul_fit  = lm(social_st ~ pickups+if_weekend+first_pick_time,data = t3)
 summary(mul_fit)
 ```
 
