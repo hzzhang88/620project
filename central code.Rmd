@@ -38,7 +38,7 @@ tt = rbind(t1,t2,t3)
 
 ```
 
-#federated learning
+# federated learning
 use the received n1,n2,n3
 ```{r}
 n = n1+n2+n3
@@ -64,13 +64,49 @@ st_beta0_hat = sqrt(var_beta0_hat)
 p_value_beta0 = pt(beta0_hat/st_beta0_hat,n-2,lower.tail = F)*2
 ```
 
-#meta learning 
+# meta learning 
+
 receive the coefficients and variance
 ```{r}
 t1_d = read.csv('./summarydata/t1_d.csv')
 t2_d = read.csv('./summarydata/t2_d.csv')
 t3_d = read.csv('./summarydata/t3_d.csv')
+p = 4
+for(i in c(1 : p)){  
+  beta1 = t1_d$betas[i]
+  beta2 = t2_d$betas[i]
+  beta3 = t3_d$betas[i]
+  varbeta1 = t1$vars[i]^2
+  varbeta2 = t2$vars[i]^2
+  varbeta3 = t3$vars[i]^2
+  
+  c1 = (1 / varbeta1) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  c2 = (1 / varbeta2) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  c3 = (1 / varbeta3) / (1 / varbeta1 + 1 / varbeta2 + 1 / varbeta3)
+  
+  beta_m = c1 * beta1 + c2 * beta2 + c3 * beta3
+  varbetam =  c1^2 * varbeta1 + c2^2 * varbeta2 + c3^2 * varbeta3
+  t = beta_m / sqrt(varbetam)
+  print(paste('Meta beta', i - 1, ':', round(beta_m, 4)))
+  print(paste('variance of Meta beta', i - 1, ':', round(varbetam, 4)))
+}
 ```
+
+# draw the tables
+
+|name|first $\hat{\beta}$|first $var(\hat{\beta})$|second $\hat{\beta}$|second $var(\hat{\beta})$|third  $\hat{\beta}$|third $var(\hat{\beta})$|
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+|Intercept|-19.1822|727.8887|44.3858|10023.49|31.3864|7812.156|
+|Pickups|0.5049|0.0166|0.8294|0.04489|0.3623|0.5368|
+|first pickup time|5.0391|7.4230|-2.6160|232.43|15.8500|120.7953|
+|if weekend|2.9078|62.5621|5.4941|248.3358|-18.1172|838.5326
+<p style="text-align: center;">Table 1</p>
+
+|meta$\hat{\beta_0}$|meta$\hat{\beta_1}$|meta$\hat{\beta_2}$|meta$\hat{\beta_3}$|
+|:---:|:---:|:---:|:---:|
+| -11.1823 | 0.5875 | 5.4231 | 2.2165 |
+<p style="text-align: center;">Table 2</p>
+
 
 # comfirmation analysis
 
