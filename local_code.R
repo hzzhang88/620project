@@ -28,6 +28,7 @@ SSE2 = sum((t2[[y]] - t2[[x]] * beta2_hat-beta0_hat)^2)
 fit2  = lm(social_st ~ pickups+first_pick_time + if_weekend,data = t2)
 betas = coefficients(fit2)
 vars = summary(mul_fit)$coefficient[,'Std. Error']^2
-
+t2_d = data.frame(cbind(betas,vars))
 ## send the summary statistics to central server
+write.csv(t2_d, "./summarydata/t2_d.csv")
 
