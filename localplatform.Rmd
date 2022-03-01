@@ -1,8 +1,24 @@
+---
+title: "localplatform"
+author: '620'
+date: "2/28/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
 library(tidyverse)
 library(tidyr)
 library(readr)
 library(readxl)
 library(lubridate)
+```
+
+```{r}
 t2 = read_excel(path = './rawdata/t2.xlsx',
                 col_types = c("date","numeric","numeric","numeric","date",'text','logical'))
 colnames(t2) = c('date',"total_st","social_st","pickups","pickups_1st","weekday","if_weekend")
@@ -11,7 +27,10 @@ for (i in 1:length(t2$date)) {
 }
 t2[['first_pick_time']] = hour(t2$pickups_1st) + minute(t2$pickups_1st)/60
 t2 = cbind(t2,id = 2)
+```
 
+
+```{r}
 ## Federated learning
 n2 = nrow(t2)
 x_bar_2 = mean(t2[[x]])
@@ -31,4 +50,5 @@ vars = summary(mul_fit)$coefficient[,'Std. Error']^2
 t2_d = data.frame(cbind(betas,vars))
 ## send the summary statistics to central server
 write.csv(t2_d, "./summarydata/t2_d.csv")
+```
 
