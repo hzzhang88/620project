@@ -50,7 +50,6 @@ use the SSXY1-3
 ```{r}
 ssx = ssx1+ssx2+ssx3
 ssxy = ssxy1 +ssxy2+ ssxy3
-  
 beta1_hat = ssxy/ssx
 beta0_hat = y_bar- beta1_hat*x_bar
 ```
@@ -68,7 +67,9 @@ p_value_beta0 = pt(beta0_hat/st_beta0_hat,n-2,lower.tail = F)*2
 #meta learning 
 receive the coefficients and variance
 ```{r}
-
+t1_d = read.csv('./summarydata/t1_d.csv')
+t2_d = read.csv('./summarydata/t2_d.csv')
+t3_d = read.csv('./summarydata/t3_d.csv')
 ```
 
 # comfirmation analysis
