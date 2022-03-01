@@ -38,7 +38,7 @@ tt = rbind(t1,t2,t3)
 
 ```
 
-#federated learning
+#Federated learning
 use the received n1,n2,n3
 ```{r}
 n = n1+n2+n3
@@ -46,7 +46,7 @@ x_bar = (n1*x_bar_1 + n2*x_bar_2+n3*x_bar_3)/n
 x_bar = (n1*y_bar_1 + n2*y_bar_2+n3*y_bar_3)/n
 ```
 use the received ssx1,ssx2,ssx3
-use the SSXY1-3
+use the SSXY 1-3
 ```{r}
 ssx = ssx1+ssx2+ssx3
 ssxy = ssxy1 +ssxy2+ ssxy3
