@@ -1,0 +1,84 @@
+---
+title: "pj2"
+author: '620'
+date: "4/10/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+df_sc= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 1)
+df_bs= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 2)
+df_sc['LOAD'] = df_sc$Tot.Soc.Time/df_sc$Tot.Scr.Time
+df_sc['DUR'] = df_sc$Tot.Scr.Time/df_sc$Pickups
+```
+
+# generate the baseline/intervention phase
+```{r}
+df_sc = df_sc %>% mutate(phase = case_when(
+  Time <= 13 ~ 'baseline',
+  Time<=20 ~'A',
+  Time <= 27 ~ 'B',
+  Time <=30 ~ 'E'
+))
+```
+
+# check  the data quality 
+the total screen time should be greater than social screen time
+```{r}
+sum(df_sc$Tot.Scr.Time < df_sc$Tot.Soc.Time, na.rm = T)
+df_sc[df_sc$Tot.Scr.Time < df_sc$Tot.Soc.Time,]
+df_sc[(df_sc$ID == 25 & df_sc$Time ==13),'Tot.Scr.Time'] = 207
+df_sc[(df_sc$ID == 25 & df_sc$Time ==13),'Tot.Soc.Time'] = 164
+```
+
+# convert the first pickup time into a numeric data
+```{r}
+df_sc$first_pk = unlist(lapply(df_sc[['Pickup.1st']],function(x) as.numeric(strsplit(x, ':')[[1]][1])*60 + 
+                          as.numeric(strsplit(x, ':')[[1]][2]) ))
+```
+
+
+# generate the average values of outcomes grouped by the ID and phase 
+as for the missing data, we can conduct the robust analysis.
+```{r}
+df_sc = df_sc %>% group_by(ID, phase ) %>% mutate(avg_scr = mean(Tot.Scr.Time, na.rm = T),
+                                                   avg_soc = mean(Tot.Soc.Time, na.rm = T),
+                                                   avg_pk = mean(Pickups, na.rm = T),
+                                                  avg_firstpk = mean(first_pk, na.rm = T),
+                                                   avg_load = mean(LOAD, na.rm = T),
+                                                   avg_dur = mean(DUR, na.rm = T)
+                                                   )
+```
+
+#
+```{r}
+pre_avg = df_sc %>%group_by(ID) %>% filter(phase == 'baseline') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'P')
+post_avg_A = df_sc %>%group_by(ID) %>% filter(phase == 'A') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'A')
+post_avg_B = df_sc %>%group_by(ID) %>% filter(phase == 'B') %>% summarise(load.mean = mean(LOAD,na.rm = T)) %>% mutate(phase = 'B')
+post_avg_E = df_sc %>%group_by(ID) %>% filter(phase == 'E') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'E')
+
+
+pre_post_diff = data.frame(ID = post_avg_A$ID,
+                           load_diff_AP = post_avg_A$load.mean-pre_avg$load.mean,
+                           load_diff_BP = post_avg_B$load.mean-pre_avg$load.mean,
+                           load_diff_EP = post_avg_E$load.mean-pre_avg$load.mean
+)
+```
+
+
+# merge pre_post_diff with baseline table
+```{r}
+data = full_join(pre_post_diff,df_bs, by = "ID")
+head(data)
+```
+
