@@ -17,8 +17,8 @@ library(tidyverse)
 
 ```{r}
 df_sc= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 1)
-df_sc =df_sc[,1:18]
 df_bs= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 2)
+df_bs =df_bs[,1:14]
 df_sc['LOAD'] = df_sc$Tot.Soc.Time/df_sc$Tot.Scr.Time
 df_sc['DUR'] = df_sc$Tot.Scr.Time/df_sc$Pickups
 ```
@@ -63,16 +63,16 @@ df_sc = df_sc %>% group_by(ID, phase ) %>% mutate(avg_scr = mean(Tot.Scr.Time, n
 
 #
 ```{r}
-pre_avg = df_sc %>%group_by(ID) %>% filter(phase == 'baseline') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'P')
-post_avg_A = df_sc %>%group_by(ID) %>% filter(phase == 'A') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'A')
-post_avg_B = df_sc %>%group_by(ID) %>% filter(phase == 'B') %>% summarise(load.mean = mean(LOAD,na.rm = T)) %>% mutate(phase = 'B')
-post_avg_E = df_sc %>%group_by(ID) %>% filter(phase == 'E') %>% summarise(load.mean = mean(LOAD)) %>% mutate(phase = 'E')
+pre_avg = df_sc %>%group_by(ID) %>% filter(phase == 'baseline') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'P')
+post_avg_A = df_sc %>%group_by(ID) %>% filter(phase == 'A') %>% summarise(total_soc_mean= mean(Tot.Soc.Time)) %>% mutate(phase = 'A')
+post_avg_B = df_sc %>%group_by(ID) %>% filter(phase == 'B') %>% summarise(total_soc_mean = mean(Tot.Soc.Time,na.rm = T)) %>% mutate(phase = 'B')
+post_avg_E = df_sc %>%group_by(ID) %>% filter(phase == 'E') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'E')
 
 
 pre_post_diff = data.frame(ID = post_avg_A$ID,
-                           load_diff_AP = post_avg_A$load.mean-pre_avg$load.mean,
-                           load_diff_BP = post_avg_B$load.mean-pre_avg$load.mean,
-                           load_diff_EP = post_avg_E$load.mean-pre_avg$load.mean
+                           A = post_avg_A$total_soc_mean-pre_avg$total_soc_mean,
+                           B= post_avg_B$total_soc_mean-pre_avg$total_soc_mean,
+                           E = post_avg_E$total_soc_mean-pre_avg$total_soc_mean
 )
 ```
 
@@ -81,5 +81,20 @@ pre_post_diff = data.frame(ID = post_avg_A$ID,
 ```{r}
 data = full_join(pre_post_diff,df_bs, by = "ID")
 head(data)
+```
+# pivot the columns
+```{r}
+data = data %>% pivot_longer(c('A','B','E'),names_to ='phase', values_to = 'diff')
+```
+
+
+
+# model
+
+$$\begin{aligned}
+Y_i = \beta_1I(treatment = A) + \beta_2I(treatment = B) + \beta_3I(treatment =E) + \beta_4x_{1i}+\beta_5x_{2i}+....
+\end{aligned}$$
+```{r}
+
 ```
 
