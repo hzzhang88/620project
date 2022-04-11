@@ -17,6 +17,7 @@ library(tidyverse)
 
 ```{r}
 df_sc= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 1)
+df_sc =df_sc[,1:18]
 df_bs= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 2)
 df_sc['LOAD'] = df_sc$Tot.Soc.Time/df_sc$Tot.Scr.Time
 df_sc['DUR'] = df_sc$Tot.Scr.Time/df_sc$Pickups
