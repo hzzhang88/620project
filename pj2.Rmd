@@ -26,10 +26,9 @@ df_sc['DUR'] = df_sc$Tot.Scr.Time/df_sc$Pickups
 # generate the baseline/intervention phase
 ```{r}
 df_sc = df_sc %>% mutate(phase = case_when(
-  Time <= 13 ~ 'baseline',
-  Time<=20 ~'A',
-  Time <= 27 ~ 'B',
-  Time <=30 ~ 'E'
+  Time <= 15 ~ 'baseline',
+  Time<=23 ~'A',
+  Time <= 30 ~ 'B'
 ))
 ```
 
@@ -66,13 +65,12 @@ df_sc = df_sc %>% group_by(ID, phase ) %>% mutate(avg_scr = mean(Tot.Scr.Time, n
 pre_avg = df_sc %>%group_by(ID) %>% filter(phase == 'baseline') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'P')
 post_avg_A = df_sc %>%group_by(ID) %>% filter(phase == 'A') %>% summarise(total_soc_mean= mean(Tot.Soc.Time)) %>% mutate(phase = 'A')
 post_avg_B = df_sc %>%group_by(ID) %>% filter(phase == 'B') %>% summarise(total_soc_mean = mean(Tot.Soc.Time,na.rm = T)) %>% mutate(phase = 'B')
-post_avg_E = df_sc %>%group_by(ID) %>% filter(phase == 'E') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'E')
+# post_avg_E = df_sc %>%group_by(ID) %>% filter(phase == 'E') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'E')
 
 
 pre_post_diff = data.frame(ID = post_avg_A$ID,
                            A = post_avg_A$total_soc_mean-pre_avg$total_soc_mean,
-                           B= post_avg_B$total_soc_mean-pre_avg$total_soc_mean,
-                           E = post_avg_E$total_soc_mean-pre_avg$total_soc_mean
+                           B= post_avg_B$total_soc_mean-pre_avg$total_soc_mean
 )
 ```
 
@@ -85,7 +83,150 @@ head(data)
 # pivot the columns
 ```{r}
 data = data[ complete.cases(data),]
-data = data %>% pivot_longer(c('A','B','E'),names_to ='phase', values_to = 'diff')
+data = data %>% pivot_longer(c('A','B'),names_to ='phase', values_to = 'diff')
+data = data[complete.cases(data),]
+data
+```
+## model A
+
+```{r}
+df1 = data%>% filter(phase =='A') 
+df1 =df1[-c(1,15)]
+df1 = df1[-c(1:3)]
+
+df2 = data%>% filter(phase =='B')
+df2= df2[-c(1,15)]
+
+library(MASS)
+df1$age = df1$age -23
+df1$devices = df1$devices -2
+df1$procrastination = df1$procrastination-35.50
+df1$course.hours = df1$course.hours-13
+df1$apps = df1$apps - 4
+
+fitA = lm(diff ~ .+sex:procrastination, data= df1)
+stepaicA = stepAIC(fitA,scope =list(lower = ~ sex + procrastination +age+ apps+ sex:procrastination, upper = fitA), trace =FALSE)
+summary(stepaicA )
+
+procas =12:68 - 35.5
+sex = c(0,1)
+age = 21:30 -23
+pro_sex =merge(data.frame(procrastination = procas), data.frame(sex = sex), by = NULL)
+pro_sex['age'] = 0
+age_sex = merge(data.frame(age = age), data.frame(sex = sex), by = NULL)
+age_sex['procrastination'] = 35.5
+
+pre = predict(stepaicA,pro_sex, interval = 'confidence',se.fit = T)
+value = pre$fit
+se = pre$se.fit
+pro_sex = cbind(pro_sex, value,se)
+pro_sex['z'] = pro_sex$fit /pro_sex$se
+pro_sex['pvalue'] = pt(abs(pro_sex$z), df = 27,lower.tail = FALSE) *2
+
+
+pre2 = predict(stepaicA,age_sex, interval = 'confidence',se.fit = T)
+value = pre2$fit
+se = pre2$se.fit
+age_sex = cbind(age_sex, value,se)
+age_sex['z'] = age_sex$fit /age_sex$se
+age_sex['pvalue'] = pt(abs(age_sex$z), df = 27,lower.tail = FALSE) *2
+
+
+
+```
+
+
+```{r}
+library(ggplot2)
+pro_sex$sex = as.factor(pro_sex$sex)
+pro_sex %>% ggplot(aes(x = procrastination+35.5,y = fit,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = lwr,ymax = upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of Total Social Screen Time') + xlab("Procrastination value")+ggtitle('Adjusting for the median age (23)')+theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r}
+age_sex$sex = as.factor(age_sex$sex)
+age_sex %>% ggplot(aes(x = age+23,y = fit,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = lwr,ymax = upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of Total Social Screen Time') + xlab("Age") + ggtitle('Adjusting for the median procrastination score (35.5)')+theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+
+```{r}
+df2$age = df2$age -23
+df2$devices = df2$devices -2
+df2$procrastination = df2$procrastination-35.50
+df2$course.hours = df2$course.hours-13
+df2$apps = df2$apps - 4
+df3 = df2[-c(1:3)]
+fitB = lm(diff ~ sex*(.), data= df3)
+stepaicB = stepAIC(fitB,scope =list(lower = ~ sex + procrastination +age+sex:procrastination, upper = fitB), trace =FALSE)
+summary(stepaicB)
+
+fitB2 = lm(diff~ sex + age + degree + apps + procrastination+sex:procrastination, data = df3)
+summary(fitB2)
+```
+
+```{r}
+apps =1:32 - 4
+sex = c(0,1)
+age = 21:30 -23
+apps_sex =merge(data.frame(apps= apps), data.frame(sex = sex), by = NULL)
+apps_sex['age'] = 0
+apps_sex['procrastination'] = 0
+apps_sex['degree'] = 0
+
+pre = predict(fitB2,apps_sex, interval = 'confidence',se.fit = T)
+value = pre$fit
+se = pre$se.fit
+apps_sex = cbind(apps_sex, value,se)
+apps_sex['z'] = apps_sex$fit /apps_sex$se
+apps_sex['pvalue'] = pt(abs(apps_sex$z), df = 27,lower.tail = FALSE) *2
+```
+
+```{r}
+apps_sex$sex = as.factor(apps_sex$sex)
+apps_sex %>% ggplot(aes(x = apps+4,y = fit,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = lwr,ymax = upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of Total Social Screen Time') + xlab("The amount of apps")+ggtitle('Adjusting for the median age (23),median procrastination(35.5), \nand Non-US degree ')+theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+apps =1:32 - 4
+deg = c(0,1)
+age = 21:30 -23
+apps_deg =merge(data.frame(apps= apps), data.frame(degree = deg), by = NULL)
+apps_deg['sex'] = 0
+apps_deg['procrastination'] = 0
+apps_deg['age'] = 0
+
+pre = predict(fitB2,apps_deg, interval = 'confidence',se.fit = T)
+value = pre$fit
+se = pre$se.fit
+apps_deg = cbind(apps_deg, value,se)
+apps_deg['z'] = apps_deg$fit /apps_deg$se
+apps_deg['pvalue'] = pt(abs(apps_deg$z), df = 27,lower.tail = FALSE) *2
+```
+
+```{r}
+apps_deg$degree = as.factor(apps_deg$degree)
+apps_deg %>% ggplot(aes(x = apps+4,y = fit,group = degree)) + geom_line(aes(color = degree)) + geom_ribbon(aes(ymin = lwr,ymax = upr, fill = degree), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of Total Social Screen Time') + xlab("The amount of apps")+ggtitle('Adjusting for the median age (23),median procrastination(35.5), \nand female ')+theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+procas =12:68 - 35.5
+sex = c(0,1)
+pro_sex =merge(data.frame(procrastination = procas), data.frame(sex = sex), by = NULL)
+pro_sex['apps'] = 0
+pro_sex['degree'] = 0
+pro_sex['age'] = 0
+
+pre = predict(stepaicA,pro_sex, interval = 'confidence',se.fit = T)
+value = pre$fit
+se = pre$se.fit
+pro_sex = cbind(pro_sex, value,se)
+pro_sex['z'] = pro_sex$fit /pro_sex$se
+pro_sex['pvalue'] = pt(abs(pro_sex$z), df = 27,lower.tail = FALSE) *2
+pro_sex$sex = as.factor(pro_sex$sex)
+pro_sex %>% ggplot(aes(x = procrastination+35.5,y = fit,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = lwr,ymax = upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of Total Social Screen Time') + xlab("Procrastination value")+ggtitle('Adjusting for the median age (23), the median number of apps,\n and Non-US degree')+theme(plot.title = element_text(hjust = 0.5))
 ```
 
 
@@ -108,5 +249,15 @@ step.aic = stepAIC(fit1,direction = 'both')
 ```{r}
 fit3 = stepAIC(fit1,scope = list(lower = ~-1+phase,upper = fit1),trace =FALSE)
 summary(fit3)
+```
+```{r}
+fit4 = lm(diff~ -1+phase*(.),data= data)
+fit5 = stepAIC(fit4,scope = list(lower = ~-1+phase,upper = fit4),trace =FALSE)
+summary(fit5)
+```
+```{r}
+fit6 = lm(diff~ -1+ phase*apps + workmate + academic + non.academic + 
+    sex + course.hours + apps + procrastination,data= data)
+summary(fit6)
 ```
 

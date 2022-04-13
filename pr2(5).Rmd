@@ -1,0 +1,316 @@
+---
+title: "620proj 2"
+author: "Xin Luo"
+date: "2022/4/10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+Sys.setenv(LANG = "en")
+```
+
+```{r}
+setwd('rawdata/')
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(systemfit)
+```
+
+```{r}
+df_sc= read_xlsx('rawdata/620W22-Project2-Data.xlsx',sheet = 1)
+df_bs= read_xlsx('620W22_Project2_Data.xlsx',sheet = 2)
+df_bs =df_bs[,1:14]
+df_sc['LOAD'] = df_sc$Tot.Soc.Time/df_sc$Tot.Scr.Time
+df_sc['DUR'] = df_sc$Tot.Scr.Time/df_sc$Pickups
+```
+
+# generate the baseline/intervention phase
+```{r}
+df_sc = df_sc %>% mutate(phase = case_when(
+  Time <= 15 ~ 'baseline',
+  Time<=23 ~'A',
+  Time <= 30 ~ 'B'
+))
+```
+
+# check  the data quality 
+the total screen time should be greater than social screen time
+```{r}
+sum(df_sc$Tot.Scr.Time < df_sc$Tot.Soc.Time, na.rm = T)
+df_sc[df_sc$Tot.Scr.Time < df_sc$Tot.Soc.Time,]
+df_sc[(df_sc$ID == 25 & df_sc$Time ==13),'Tot.Scr.Time'] = 207
+df_sc[(df_sc$ID == 25 & df_sc$Time ==13),'Tot.Soc.Time'] = 164
+```
+
+# convert the first pickup time into a numeric data
+```{r}
+df_sc$first_pk = unlist(lapply(df_sc[['Pickup.1st']],function(x) as.numeric(strsplit(x, ':')[[1]][1])*60 + 
+                          as.numeric(strsplit(x, ':')[[1]][2]) ))
+```
+
+
+# generate the average values of outcomes grouped by the ID and phase 
+as for the missing data, we can conduct the robust analysis.
+```{r}
+df_sc = df_sc %>% group_by(ID, phase ) %>% mutate(avg_scr = mean(Tot.Scr.Time, na.rm = T),
+                                                   avg_soc = mean(Tot.Soc.Time, na.rm = T),
+                                                   avg_pk = mean(Pickups, na.rm = T),
+                                                  avg_firstpk = mean(first_pk, na.rm = T),
+                                                   avg_load = mean(LOAD, na.rm = T),
+                                                   avg_dur = mean(DUR, na.rm = T)
+                                                   )
+```
+
+#
+```{r}
+pre_avg = df_sc %>%group_by(ID) %>% filter(phase == 'baseline') %>% summarise(total_soc_mean = mean(Tot.Soc.Time)) %>% mutate(phase = 'P')
+post_avg_A = df_sc %>%group_by(ID) %>% filter(phase == 'A') %>% summarise(total_soc_mean= mean(Tot.Soc.Time)) %>% mutate(phase = 'A')
+post_avg_B = df_sc %>%group_by(ID) %>% filter(phase == 'B') %>% summarise(total_soc_mean = mean(Tot.Soc.Time,na.rm = T)) %>% mutate(phase = 'B')
+
+
+pre_post_diff = data.frame(ID = post_avg_A$ID,
+                           A = post_avg_A$total_soc_mean-pre_avg$total_soc_mean,
+                           B= post_avg_B$total_soc_mean-pre_avg$total_soc_mean)
+                      
+```
+
+
+# merge pre_post_diff with baseline table
+```{r}
+data = full_join(pre_post_diff,df_bs, by = "ID")
+head(data)
+```
+# pivot the columns
+```{r}
+data = data %>% pivot_longer(c('A','B'),names_to ='phase', values_to = 'diff')
+```
+
+# Baseline data preprocessing and normalization
+```{r}
+# missing value imputation
+data$age[is.na(data$age)] = median(data$age[!is.na(data$age)])
+data$age_centered = data$age - median(data$age) # 23
+data$apps = data$apps -median(data$apps) #4
+data$course_centered = data$course.hours - median(data$course.hours) # 13
+#data$apps_log = log(data$apps)
+# data$procrastination_norm = (data$procrastination - mean(data$procrastination))/sd(data$procrastination)
+data$procrastination = data$procrastination - median(data$procrastination) # 34.5
+#data$phase_1 = 0
+#data$phase_2 = 0
+#data$phase_3 = 0
+#data$phase_1[data$phase == 'A'] = 1
+#data$phase_2[data$phase == 'B'] = 1
+#data$phase_3[data$phase == 'E'] = 1
+```
+
+
+
+# SUR model
+
+$$\begin{aligned}
+Two \ regression \ models \ are \ built:
+\\
+Y_{1i} = \beta_{10} + \beta_{11}sex + \beta_{12}procrastination\_norm + \epsilon_{1i}
+\\
+Y_{2i} = \beta_{20} + \beta_{21}sex + \beta_{22}procrastination\_norm + \epsilon_{2i}
+\\
+Then \ seemingly \ unrelated \ regression \ model \ is \ built:
+
+
+\end{aligned}$$
+
+
+```{r}
+data1 = subset(data, select = -c(ID, age, course.hours))
+data11 = data1[data1$phase=='A',]
+data12 = data1[data1$phase=='B',]
+data11$diffA = data11$diff
+data11$diffB = data12$diff
+data11 = subset(data11, select = -c(diff, phase))
+lm1 <- diffA ~ sex + age_centered + apps+procrastination+ procrastination:sex
+lm2 <- diffB ~ sex + age_centered + apps +degree+procrastination+ procrastination:sex
+eqSystem = list(trA = lm1, trB = lm2)
+fit = systemfit(eqSystem, data = data11, method = "SUR")
+summary(fit)
+print(fit)
+```
+```{r}
+#model1
+# apps_sex
+apps =1:32 - 4
+sex = c(0,1)
+age = 21:30 -23
+apps_sex =merge(data.frame(apps= apps), data.frame(sex = sex), by = NULL)
+apps_sex['age_centered'] = 0
+apps_sex['procrastination'] = 0
+apps_sex['degree'] = 0
+
+pre = predict(fit,apps_sex, interval = 'confidence',se.fit = T)
+fit_conint = pre[c("trA.pred", "trA.se.fit","trA.lwr","trA.upr")]
+
+apps_sex = cbind(apps_sex, fit_conint)
+apps_sex['z'] = apps_sex$trA.pred /apps_sex$trA.se.fit
+apps_sex['pvalue'] = pt(abs(apps_sex$z), df = 27,lower.tail = FALSE) *2
+apps_sex$sex = as.factor(apps_sex$sex)
+apps_sex$sex = ifelse(apps_sex$sex ==0, 'Female','Male')
+plt1 = apps_sex %>% ggplot(aes(x = apps+4,y = trA.pred,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = trA.lwr,ymax = trA.upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("The amount of apps")+ggtitle('The effect of intervention A, \nadjusting for the median age (23) and median procrastination score(34.5) ')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+```
+
+```{r}
+# model 1
+procas =12:68 - 34.5
+sex = c(0,1)
+pro_sex =merge(data.frame(procrastination = procas), data.frame(sex = sex), by = NULL)
+pro_sex['apps'] = 0
+pro_sex['degree'] = 0
+pro_sex['age_centered'] = 0
+
+pre = predict(fit,pro_sex, interval = 'confidence',se.fit = T)
+fit_conint = pre[c("trA.pred", "trA.se.fit","trA.lwr","trA.upr")]
+
+pro_sex = cbind(pro_sex, fit_conint)
+pro_sex['z'] = pro_sex$trA.pred /pro_sex$trA.se.fit
+pro_sex['pvalue'] = pt(abs(pro_sex$z), df = 27,lower.tail = FALSE) *2
+pro_sex$sex = as.factor(pro_sex$sex)
+pro_sex$sex = ifelse(pro_sex$sex ==0, 'Female','Male')
+plt2= pro_sex %>% ggplot(aes(x = procrastination+34.5,y =trA.pred,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = trA.lwr,ymax =trA.upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("Procrastination value")+ggtitle('The effect of intervention A, \nadjusting for the median age (23) and the median number of apps (4)')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+```
+
+```{r}
+# model1
+procas =12:68 - 34.5
+sex = c(0,1)
+age = 21:30 -23
+age_sex = merge(data.frame(age_centered = age), data.frame(sex = sex), by = NULL)
+age_sex['procrastination'] = 0
+age_sex['degree'] = 0
+age_sex['apps'] = 0
+
+pre = predict(fit,age_sex, interval = 'confidence',se.fit = T)
+fit_conint = pre[c("trA.pred", "trA.se.fit","trA.lwr","trA.upr")]
+
+age_sex = cbind(age_sex, fit_conint)
+age_sex['z'] = age_sex$trA.pred /age_sex$trA.se.fit
+age_sex['pvalue'] = pt(abs(age_sex$z), df = 27,lower.tail = FALSE) *2
+age_sex$sex = as.factor(age_sex$sex)
+age_sex$sex = ifelse(age_sex$sex ==0, 'Female','Male')
+
+plt3 = age_sex %>% ggplot(aes(x =age_centered+23,y =trA.pred,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = trA.lwr,ymax =trA.upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("Procrastination value")+ggtitle('The effect of intervention A,\nadjusting for the median number of apps (4),and median procrastination (34.5)')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+
+```
+
+```{r}
+library(ggpubr)
+ggarrange(plt1,plt2,plt3,labels = c('A','B','C'),ncol =2, nrow=2)
+```
+
+
+
+
+```{r}
+# model 2
+# plot the numbers of apps and  degree
+apps =1:32 - 4
+deg = c(0,1)
+apps_deg =merge(data.frame(apps= apps), data.frame(degree = deg), by = NULL)
+apps_deg['sex'] = 0
+apps_deg['procrastination'] = 0
+apps_deg['age_centered'] = 0
+
+pre = predict(fit,apps_deg, interval = 'confidence',se.fit = T)
+
+fit_conint = pre[c("trB.pred", "trB.se.fit","trB.lwr","trB.upr")]
+
+apps_deg = cbind(apps_deg, fit_conint)
+apps_deg['z'] = apps_deg$trB.pred /apps_deg$trB.se.fit
+apps_deg['pvalue'] = pt(abs(apps_deg$z), df = 27,lower.tail = FALSE) *2
+
+
+# plot 
+apps_deg$degree = as.factor(apps_deg$degree)
+apps_deg$degree  = ifelse(apps_deg$degree  ==0, 'Non-US','uS')
+
+plt4 = apps_deg %>% ggplot(aes(x = apps+4,y = trB.pred ,group = degree)) + geom_line(aes(color = degree)) + geom_ribbon(aes(ymin = trB.lwr,ymax = trB.upr, fill = degree), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("The amount of apps")+ggtitle('The effect of intervention B,\nadjusting for the median age (23),median procrastination(34.5), \nand female ')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+```
+
+```{r}
+# model 2 
+
+procas =12:68 - 34.5
+sex = c(0,1)
+pro_sex =merge(data.frame(procrastination = procas), data.frame(sex = sex), by = NULL)
+pro_sex['apps'] = 0
+pro_sex['degree'] = 0
+pro_sex['age_centered'] = 0
+
+pre = predict(fit,pro_sex, interval = 'confidence',se.fit = T)
+fit_conint = pre[c("trB.pred", "trB.se.fit","trB.lwr","trB.upr")]
+
+pro_sex = cbind(pro_sex, fit_conint)
+pro_sex['z'] = pro_sex$trB.pred /pro_sex$trB.se.fit
+pro_sex['pvalue'] = pt(abs(pro_sex$z), df = 27,lower.tail = FALSE) *2
+pro_sex$sex = as.factor(pro_sex$sex)
+pro_sex$sex = ifelse(pro_sex$sex ==0, 'Female','Male')
+plt5 = pro_sex %>% ggplot(aes(x = procrastination+34.5,y =trB.pred,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = trB.lwr,ymax =trB.upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("Procrastination value")+ggtitle('The effect of intervention B,\nadjusting for the median age (23), the median number of apps,\n and Non-US degree')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+```
+
+```{r}
+# model2 
+# apps_sex
+apps =1:32 - 4
+sex = c(0,1)
+age = 21:30 -23
+apps_sex =merge(data.frame(apps= apps), data.frame(sex = sex), by = NULL)
+apps_sex['age_centered'] = 0
+apps_sex['procrastination'] = 0
+apps_sex['degree'] = 0
+
+pre = predict(fit,apps_sex, interval = 'confidence',se.fit = T)
+fit_conint = pre[c("trB.pred", "trB.se.fit","trB.lwr","trB.upr")]
+
+apps_sex = cbind(apps_sex, fit_conint)
+apps_sex['z'] = apps_sex$trB.pred /apps_sex$trB.se.fit
+apps_sex['pvalue'] = pt(abs(apps_sex$z), df = 27,lower.tail = FALSE) *2
+apps_sex$sex = as.factor(apps_sex$sex)
+apps_sex$sex = ifelse(apps_sex$sex ==0, 'Female','Male')
+plt6 = apps_sex %>% ggplot(aes(x = apps+4,y = trB.pred,group = sex)) + geom_line(aes(color = sex)) + geom_ribbon(aes(ymin = trB.lwr,ymax = trB.upr, fill = sex), alpha = 0.2,linetype=2) + ylab('Pre-post Difference of\n Total Social Screen Time') + xlab("The amount of apps")+ggtitle('The effect of intervention B,\nadjusting for the median age (23),median procrastination(34.5), \nand Non-US degree ')+theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0, linetype="dashed", 
+                color = "blue", size=1)
+```
+
+```{r}
+ggarrange(plt4,plt5,plt6,labels = c('A','B','C'),ncol =2, nrow=2)
+```
+
+
+
+
+
+
+
+```{r}
+library(ggplot2)
+date = seq.Date(from = as.Date('2022-03-01'), to = as.Date('2022-03-30'), by = 'days')
+tt =c()
+for(i in c(1:30)){
+  tt[i] = mean(df_sc$Tot.Scr.Time[df_sc$Time==i], na.rm = T)
+}
+phase = c(rep('P', 14), rep('A', 8), rep('B', 8))
+dd = data.frame(soc_t = tt, date = date, phase = phase)
+ggplot(dd, aes(x = date, y = soc_t, group = phase)) + geom_line(aes(color = phase)) + 
+  geom_point() + xlab('date') + ylab('social app usage time') + 
+  theme(axis.text.x = element_text(face = 'bold', angle = 45)) + 
+  labs(title = 'mean social total time ~ date')
+
+```
+
+
